@@ -40,18 +40,20 @@
       flex-direction: column;
       justify-content: space-between;
       pointer-events: none;
-      padding: 20px;
+      padding: 16px 24px;
     }
 
     .top-bar {
       display: flex;
       justify-content: space-between;
-      font-size: 24px;
+      align-items: center;
+      font-size: 22px;
       font-weight: bold;
-      background: rgba(0, 0, 0, 0.65);
+      background: rgba(0, 0, 0, 0.7);
       padding: 12px 28px;
       border-radius: 20px;
       backdrop-filter: blur(8px);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
     }
 
     #start-overlay {
@@ -94,23 +96,23 @@
   <div id="ui-layer">
     <div class="top-bar">
       <div id="score-text">⭐ คะแนน: 0</div>
-      <div style="color: #cbd5e1; font-size: 18px;">💡 ใช้นิ้วชี้แตะเลือก "ภาพ" แล้วไปแตะ "ชื่อ" ให้ตรงกัน</div>
-      <div id="timer-text">⏳ เวลา: 60 วิ</div>
+      <div style="color: #cbd5e1; font-size: 16px;">💡 ยกนิ้วชี้แตะ "ภาพ" แล้วไปแตะ "ชื่อ" ให้ตรงกัน</div>
+      <div id="timer-text" style="color: #38bdf8;">⏳ เวลา: 02:00</div>
     </div>
     <div></div>
   </div>
 
   <div id="start-overlay">
     <h1 style="font-size: 38px; margin-bottom: 12px;">🧩 AR Matching: จับคู่อุปกรณ์คอมพิวเตอร์</h1>
-    <p style="font-size: 18px; color: #cbd5e1; margin-bottom: 30px; text-align: center; max-width: 520px; line-height: 1.6;">
-      ยกนิ้วชี้ของคุณขึ้นมาหน้ากล้อง<br>
-      แตะค้างที่ <b>การ์ดรูปภาพ</b> 1 ใบ แล้วเลื่อนไปแตะ <b>การ์ดชื่ออุปกรณ์</b> ที่สัมพันธ์กัน!
+    <p style="font-size: 18px; color: #cbd5e1; margin-bottom: 24px; text-align: center; max-width: 540px; line-height: 1.6;">
+      ภารกิจท้าทายความเร็ว <b>2 นาที!</b><br>
+      ยกนิ้วชี้ขึ้นมาหน้ากล้อง แตะค้างที่ <b>การ์ดรูปภาพ</b> แล้วไปแตะ <b>การ์ดชื่อ</b> ที่คู่กัน
     </p>
-    <button class="start-btn" id="start-btn">เริ่มจับคู่</button>
+    <button class="start-btn" id="start-btn">เริ่มจับคู่ (2 นาที)</button>
   </div>
 
   <script>
-    // คลังข้อมูลอุปกรณ์ (มีทั้งรูปไอคอนและชื่อ)
+    // คลังข้อมูลฮาร์ดแวร์คอมพิวเตอร์ 20 ชนิด
     const hardwareDatabase = [
       { id: 'kb', icon: '⌨️', name: 'แป้นพิมพ์ (Keyboard)' },
       { id: 'mouse', icon: '🖱️', name: 'เมาส์ (Mouse)' },
@@ -119,19 +121,32 @@
       { id: 'printer', icon: '🖨️', name: 'เครื่องพิมพ์ (Printer)' },
       { id: 'mic', icon: '🎙️', name: 'ไมโครโฟน (Microphone)' },
       { id: 'headphone', icon: '🎧', name: 'หูฟัง (Headphone)' },
-      { id: 'camera', icon: '📷', name: 'เว็บแคม (Webcam)' }
+      { id: 'camera', icon: '📷', name: 'เว็บแคม (Webcam)' },
+      { id: 'cpu', icon: '🔲', name: 'ซีพียู (CPU / Processor)' },
+      { id: 'mainboard', icon: '🟩', name: 'เมนบอร์ด (Motherboard)' },
+      { id: 'ram', icon: '📏', name: 'แรม (RAM Memory)' },
+      { id: 'gpu', icon: '🎮', name: 'การ์ดแสดงผล (GPU)' },
+      { id: 'hdd', icon: '💽', name: 'ฮาร์ดดิสก์ (Hard Disk)' },
+      { id: 'flashdrive', icon: '💾', name: 'แฟลชไดรฟ์ (USB Drive)' },
+      { id: 'powersupply', icon: '⚡', name: 'พาวเวอร์ซัพพลาย (PSU)' },
+      { id: 'fan', icon: '🌀', name: 'พัดลมระบายความร้อน' },
+      { id: 'router', icon: '📡', name: 'เราเตอร์ (Wi-Fi Router)' },
+      { id: 'projector', icon: '📽️', name: 'โปรเจกเตอร์ (Projector)' },
+      { id: 'lan', icon: '🔌', name: 'สายแลน (LAN Cable)' },
+      { id: 'scanner', icon: '📑', name: 'สแกนเนอร์ (Scanner)' }
     ];
 
+    let availablePool = [];
     let currentRoundItems = [];
     let imageCards = [];
     let nameCards = [];
-    let selectedCard = null; // การ์ดใบแรกที่ผู้เล่นเลือกไว้
+    let selectedCard = null;
 
     let score = 0;
-    let timeLeft = 60;
+    let timeLeft = 120; // กำหนด 2 นาที (120 วินาที)
     let isPlaying = false;
     let hoverDuration = 0;
-    const HOVER_THRESHOLD = 12; // แตะค้างประมาณ 0.35 วิเพื่อกด
+    const HOVER_THRESHOLD = 12; // ค้างนิ้วประมาณ 0.35 วิ
     let hoveredCard = null;
 
     const videoElement = document.getElementById('webcam');
@@ -171,6 +186,12 @@
       }
     }
 
+    function formatTime(seconds) {
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
     function resizeCanvas() {
       canvasElement.width = window.innerWidth;
       canvasElement.height = window.innerHeight;
@@ -178,10 +199,12 @@
     }
     window.addEventListener('resize', resizeCanvas);
 
-    // สุ่ม 3 อุปกรณ์มาเล่นในแต่ละรอบ
+    // สุ่มทีละ 3 ข้อ และไม่ซ้ำข้อเดิมจนกว่าจะหมดกอง
     function setupNewRound() {
-      const shuffled = [...hardwareDatabase].sort(() => 0.5 - Math.random());
-      currentRoundItems = shuffled.slice(0, 3);
+      if (availablePool.length < 3) {
+        availablePool = [...hardwareDatabase].sort(() => 0.5 - Math.random());
+      }
+      currentRoundItems = availablePool.splice(0, 3);
 
       const icons = currentRoundItems.map(item => ({ id: item.id, icon: item.icon, type: 'IMAGE', matched: false }));
       const names = currentRoundItems.map(item => ({ id: item.id, name: item.name, type: 'NAME', matched: false }));
@@ -195,12 +218,11 @@
     function calculateCardPositions() {
       const w = canvasElement.width;
       const h = canvasElement.height;
-      const cardW = Math.min(240, w * 0.35);
+      const cardW = Math.min(250, w * 0.35);
       const cardH = 110;
       const startY = h * 0.22;
       const gapY = cardH + 24;
 
-      // จัดการ์ดฝั่งซ้าย (รูปภาพ)
       imageCards.forEach((c, i) => {
         c.x = 40;
         c.y = startY + (i * gapY);
@@ -208,7 +230,6 @@
         c.h = cardH;
       });
 
-      // จัดการ์ดฝั่งขวา (ชื่อ)
       nameCards.forEach((c, i) => {
         c.x = w - cardW - 40;
         c.y = startY + (i * gapY);
@@ -220,9 +241,7 @@
     function onResults(results) {
       canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
-      // วาดการ์ดรูปภาพ (ฝั่งซ้าย)
       imageCards.forEach(card => drawCard(card));
-      // วาดการ์ดชื่อ (ฝั่งขวา)
       nameCards.forEach(card => drawCard(card));
 
       if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0 && isPlaying) {
@@ -230,7 +249,7 @@
         const tipX = (1 - indexTip.x) * canvasElement.width;
         const tipY = indexTip.y * canvasElement.height;
 
-        // วาดจุดนิ้วชี้
+        // วาดพอยน์เตอร์ปลายนิ้ว
         canvasCtx.beginPath();
         canvasCtx.arc(tipX, tipY, 16, 0, 2 * Math.PI);
         canvasCtx.fillStyle = '#facc15';
@@ -239,14 +258,12 @@
         canvasCtx.strokeStyle = '#ffffff';
         canvasCtx.stroke();
 
-        // ตรวจว่าชี้นิ้วโดนการ์ดใบไหน
         const allCards = [...imageCards, ...nameCards].filter(c => !c.matched);
         let currentHover = allCards.find(c => tipX >= c.x && tipX <= c.x + c.w && tipY >= c.y && tipY <= c.y + c.h);
 
         if (currentHover) {
           if (hoveredCard === currentHover) {
             hoverDuration++;
-            // วาดวงกลมโหลดเวลาแตะค้าง
             drawLoadingCircle(tipX, tipY, hoverDuration / HOVER_THRESHOLD);
             if (hoverDuration >= HOVER_THRESHOLD) {
               handleCardClick(currentHover);
@@ -266,20 +283,16 @@
 
     function handleCardClick(card) {
       if (!selectedCard) {
-        // แตะการ์ดใบแรก
         selectedCard = card;
         playAudio('select');
       } else {
-        // ถ้าแตะใบเดิม ให้ยกเลิก
         if (selectedCard === card) {
           selectedCard = null;
           return;
         }
 
-        // ต้องเป็นการ์ดต่างประเภทกัน (รูป กับ ชื่อ)
         if (selectedCard.type !== card.type) {
           if (selectedCard.id === card.id) {
-            // จับคู่ถูกต้อง!
             selectedCard.matched = true;
             card.matched = true;
             score += 10;
@@ -287,20 +300,17 @@
             playAudio('correct');
             selectedCard = null;
 
-            // ตรวจสอบว่าจับคู่หมดทั้ง 3 คู่ในรอบนี้หรือยัง
             const remaining = [...imageCards, ...nameCards].filter(c => !c.matched);
             if (remaining.length === 0) {
-              setTimeout(setupNewRound, 500);
+              setTimeout(setupNewRound, 400);
             }
           } else {
-            // จับคู่ผิด
             score = Math.max(0, score - 3);
             scoreText.innerText = `⭐ คะแนน: ${score}`;
             playAudio('wrong');
             selectedCard = null;
           }
         } else {
-          // ถ้าแตะประเภทเดียวกัน ให้เปลี่ยนใบที่เลือกเป็นใบใหม่
           selectedCard = card;
           playAudio('select');
         }
@@ -308,13 +318,12 @@
     }
 
     function drawCard(card) {
-      if (card.matched) return; // ไม่แสดงการ์ดที่จับคู่ผ่านแล้ว
+      if (card.matched) return;
 
       canvasCtx.save();
       const isSelected = selectedCard === card;
 
-      // สีพื้นหลังและกรอบ
-      canvasCtx.fillStyle = isSelected ? 'rgba(234, 179, 8, 0.35)' : 'rgba(15, 23, 42, 0.8)';
+      canvasCtx.fillStyle = isSelected ? 'rgba(234, 179, 8, 0.4)' : 'rgba(15, 23, 42, 0.82)';
       canvasCtx.strokeStyle = isSelected ? '#facc15' : (card.type === 'IMAGE' ? '#38bdf8' : '#c084fc');
       canvasCtx.lineWidth = isSelected ? 5 : 3;
 
@@ -327,11 +336,11 @@
       canvasCtx.textBaseline = 'middle';
 
       if (card.type === 'IMAGE') {
-        canvasCtx.font = '52px sans-serif';
+        canvasCtx.font = '50px sans-serif';
         canvasCtx.fillText(card.icon, card.x + card.w / 2, card.y + card.h / 2);
       } else {
         canvasCtx.fillStyle = '#ffffff';
-        canvasCtx.font = 'bold 18px sans-serif';
+        canvasCtx.font = 'bold 17px sans-serif';
         canvasCtx.fillText(card.name, card.x + card.w / 2, card.y + card.h / 2);
       }
       canvasCtx.restore();
@@ -345,7 +354,6 @@
       canvasCtx.stroke();
     }
 
-    // ติดตั้ง MediaPipe
     const hands = new Hands({
       locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
     });
@@ -367,11 +375,11 @@
 
       const timer = setInterval(() => {
         timeLeft--;
-        timerText.innerText = `⏳ เวลา: ${timeLeft} วิ`;
+        timerText.innerText = `⏳ เวลา: ${formatTime(timeLeft)}`;
         if (timeLeft <= 0) {
           clearInterval(timer);
           isPlaying = false;
-          alert(`🎉 จบเกมจับคู่! คุณได้คะแนนรวม: ${score} คะแนน`);
+          alert(`🎉 หมดเวลา 2 นาที!\nคุณทำคะแนนรวมได้: ${score} คะแนน`);
           location.reload();
         }
       }, 1000);
