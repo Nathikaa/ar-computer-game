@@ -14,7 +14,6 @@
       color: #fff;
     }
 
-    /* กล้องและ Canvas สลับซ้ายขวา (Mirror) เพื่อให้ควบคุมมือได้เป็นธรรมชาติ */
     #webcam-container {
       position: absolute;
       top: 0;
@@ -38,7 +37,6 @@
       pointer-events: none;
     }
 
-    /* กล่องข้อความ UI */
     #ui-layer {
       position: absolute;
       top: 0;
@@ -55,28 +53,28 @@
     .top-bar {
       display: flex;
       justify-content: space-between;
+      align-items: center;
       font-size: 22px;
       font-weight: bold;
-      background: rgba(0, 0, 0, 0.6);
-      padding: 12px 24px;
-      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 12px 28px;
+      border-radius: 20px;
       backdrop-filter: blur(8px);
     }
 
     .question-box {
       align-self: center;
-      background: rgba(15, 23, 42, 0.85);
+      background: rgba(15, 23, 42, 0.9);
       border: 3px solid #38bdf8;
       border-radius: 20px;
-      padding: 20px 40px;
+      padding: 20px 44px;
       text-align: center;
-      margin-top: 20px;
+      margin-top: 15px;
       box-shadow: 0 10px 25px rgba(0,0,0,0.5);
     }
     .question-title { font-size: 18px; color: #94a3b8; margin-bottom: 6px; }
     .item-name { font-size: 34px; font-weight: 800; color: #facc15; }
 
-    /* ปุ่มเริ่มต้นเกม */
     #start-overlay {
       position: absolute;
       top: 0;
@@ -91,7 +89,7 @@
       z-index: 100;
     }
     .start-btn {
-      padding: 16px 40px;
+      padding: 16px 44px;
       font-size: 24px;
       font-weight: bold;
       background: #0284c7;
@@ -119,45 +117,64 @@
   <div id="ui-layer">
     <div class="top-bar">
       <div id="score-text">⭐ คะแนน: 0</div>
-      <div id="timer-text">⏳ เวลา: 60 วิ</div>
+      <div id="timer-text" style="color: #38bdf8;">⏳ เวลา: 02:00</div>
     </div>
     <div class="question-box">
-      <div class="question-title">อุปกรณ์นี้เป็นประเภทใด?</div>
+      <div class="question-title">อุปกรณ์นี้เป็นหน่วยประเภทใด?</div>
       <div class="item-name" id="current-item">เตรียมตัว...</div>
     </div>
-    <div></div> <!-- เว้นพื้นที่ด้านล่าง -->
+    <div></div>
   </div>
 
   <div id="start-overlay">
     <h1 style="font-size: 36px; margin-bottom: 10px;">🎮 เกม AR ฮาร์ดแวร์คอมพิวเตอร์</h1>
-    <p style="font-size: 18px; color: #cbd5e1; margin-bottom: 30px; text-align: center; max-width: 500px;">
+    <p style="font-size: 18px; color: #cbd5e1; margin-bottom: 24px; text-align: center; max-width: 520px; line-height: 1.6;">
+      ท้าทายความเร็ว <b>2 นาที!</b><br>
       ยกนิ้วชี้ของคุณขึ้นมา แล้วชี้ไปที่กล่องคำตอบ <b>"หน่วยรับเข้า (Input)"</b> หรือ <b>"หน่วยส่งออก (Output)"</b> ให้ถูกต้อง!
     </p>
-    <button class="start-btn" id="start-btn">เริ่มเล่นเกม</button>
+    <button class="start-btn" id="start-btn">เริ่มเล่นเกม (2 นาที)</button>
   </div>
 
   <script>
-    // ข้อมูลคำถามฮาร์ดแวร์คอมพิวเตอร์
-    const questions = [
+    // คลังข้อสอบอุปกรณ์คอมพิวเตอร์ 24 ข้อ
+    const questionsDatabase = [
+      // หน่วยรับเข้า (Input - LEFT)
       { name: "แป้นพิมพ์ (Keyboard)", type: "LEFT" },
-      { name: "จอภาพ (Monitor)", type: "RIGHT" },
       { name: "เมาส์ (Mouse)", type: "LEFT" },
-      { name: "ลำโพง (Speaker)", type: "RIGHT" },
       { name: "ไมโครโฟน (Microphone)", type: "LEFT" },
-      { name: "เครื่องพิมพ์ (Printer)", type: "RIGHT" },
       { name: "สแกนเนอร์ (Scanner)", type: "LEFT" },
-      { name: "โปรเจกเตอร์ (Projector)", type: "RIGHT" },
       { name: "เว็บแคม (Webcam)", type: "LEFT" },
-      { name: "หูฟัง (Headphone)", type: "RIGHT" }
+      { name: "ทัชแพด (Touchpad)", type: "LEFT" },
+      { name: "จอยสติ๊ก (Joystick)", type: "LEFT" },
+      { name: "เครื่องอ่านบาร์โค้ด (Barcode Reader)", type: "LEFT" },
+      { name: "ปากกาสไตลัส (Stylus Pen)", type: "LEFT" },
+      { name: "เซนเซอร์สแกนลายนิ้วมือ", type: "LEFT" },
+      { name: "กล้องดิจิทัล (Digital Camera)", type: "LEFT" },
+      { name: "แผ่นกระดานวาดรูป (Drawing Tablet)", type: "LEFT" },
+
+      // หน่วยส่งออก (Output - RIGHT)
+      { name: "จอภาพ (Monitor)", type: "RIGHT" },
+      { name: "ลำโพง (Speaker)", type: "RIGHT" },
+      { name: "เครื่องพิมพ์ (Printer)", type: "RIGHT" },
+      { name: "โปรเจกเตอร์ (Projector)", type: "RIGHT" },
+      { name: "หูฟัง (Headphone)", type: "RIGHT" },
+      { name: "หูฟังแบบเอียร์บัด (Earbuds)", type: "RIGHT" },
+      { name: "พล็อตเตอร์ (Plotter)", type: "RIGHT" },
+      { name: "เครื่องพิมพ์ 3 มิติ (3D Printer)", type: "RIGHT" },
+      { name: "จอสัมผัสแสดงผล (Display Output)", type: "RIGHT" },
+      { name: "ไฟสถานะ LED บนเคส", type: "RIGHT" },
+      { name: "ซาวด์การ์ดขยายเสียงภายนอก", type: "RIGHT" },
+      { name: "เครื่องพิมพ์สลิป/ใบเสร็จ", type: "RIGHT" }
     ];
 
+    let questionPool = [];
+    let currentQuestion = null;
     let score = 0;
-    let timeLeft = 60;
+    let timeLeft = 120; // 2 นาที (120 วินาที)
     let isPlaying = false;
-    let currentIndex = 0;
     let targetX = null, targetY = null;
-    let holdDuration = 0; // ต้องชี้ค้างไว้เล็กน้อยเพื่อยืนยันคำตอบ
-    const HOLD_THRESHOLD = 15; // เฟรม (~0.5 วินาที)
+    let holdDuration = 0;
+    const HOLD_THRESHOLD = 8; // ปรับลดให้แตะติดไวขึ้น (~0.25 วิ)
     let selectedBox = null;
 
     const videoElement = document.getElementById('webcam');
@@ -169,27 +186,35 @@
     const startOverlay = document.getElementById('start-overlay');
     const startBtn = document.getElementById('start-btn');
 
-    // สร้างเสียงประกอบสังเคราะห์ (ไม่ต้องใช้ไฟล์เสียงภายนอก)
+    // ระบบเสียงสังเคราะห์
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     function playBeep(isCorrect) {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.connect(gain);
       gain.connect(audioCtx.destination);
+      const now = audioCtx.currentTime;
+
       if (isCorrect) {
-        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
-        osc.frequency.setValueAtTime(880.00, audioCtx.currentTime + 0.1); // A5
-        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.3);
+        osc.frequency.setValueAtTime(587.33, now);
+        osc.frequency.setValueAtTime(880.00, now + 0.08);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+        osc.start(now);
+        osc.stop(now + 0.25);
       } else {
-        osc.frequency.setValueAtTime(220, audioCtx.currentTime);
-        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.2);
+        osc.frequency.setValueAtTime(200, now);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+        osc.start(now);
+        osc.stop(now + 0.2);
       }
+    }
+
+    function formatTime(seconds) {
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     }
 
     function resizeCanvas() {
@@ -200,42 +225,40 @@
     resizeCanvas();
 
     function nextQuestion() {
-      currentIndex = Math.floor(Math.random() * questions.length);
-      currentItemText.innerText = questions[currentIndex].name;
+      if (questionPool.length === 0) {
+        questionPool = [...questionsDatabase].sort(() => 0.5 - Math.random());
+      }
+      currentQuestion = questionPool.pop();
+      currentItemText.innerText = currentQuestion.name;
     }
 
     function onResults(results) {
       canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
-      // กำหนดตำแหน่งกล่องตัวเลือก ซ้าย (Input) และ ขวา (Output)
-      const boxW = Math.min(220, canvasElement.width * 0.28);
-      const boxH = 180;
-      const leftBox = { x: 30, y: canvasElement.height / 2 - boxH / 2, w: boxW, h: boxH, title: "หน่วยรับเข้า", sub: "(Input)" };
-      const rightBox = { x: canvasElement.width - boxW - 30, y: canvasElement.height / 2 - boxH / 2, w: boxW, h: boxH, title: "หน่วยส่งออก", sub: "(Output)" };
+      const boxW = Math.min(230, canvasElement.width * 0.28);
+      const boxH = 190;
+      const leftBox = { x: 35, y: canvasElement.height / 2 - boxH / 2, w: boxW, h: boxH, title: "หน่วยรับเข้า", sub: "(Input)" };
+      const rightBox = { x: canvasElement.width - boxW - 35, y: canvasElement.height / 2 - boxH / 2, w: boxW, h: boxH, title: "หน่วยส่งออก", sub: "(Output)" };
 
-      // วาดกล่องคำตอบซ้าย (สีเขียว-ฟ้า)
       drawTargetBox(leftBox, '#06b6d4', selectedBox === 'LEFT');
-      // วาดกล่องคำตอบขวา (สีชมพู-ม่วง)
       drawTargetBox(rightBox, '#ec4899', selectedBox === 'RIGHT');
 
       if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0 && isPlaying) {
         const landmarks = results.multiHandLandmarks[0];
-        const indexTip = landmarks[8]; // ตำแหน่งปลายนิ้วชี้
+        const indexTip = landmarks[8];
 
-        // คำนวณพิกัดให้ตรงกับกล้องที่พลิกกลับด้าน (Mirror)
         targetX = (1 - indexTip.x) * canvasElement.width;
         targetY = indexTip.y * canvasElement.height;
 
-        // วาดพอยน์เตอร์ตำแหน่งปลายนิ้ว
+        // วาดจุดเคอร์เซอร์ปลายนิ้ว
         canvasCtx.beginPath();
-        canvasCtx.arc(targetX, targetY, 18, 0, 2 * Math.PI);
+        canvasCtx.arc(targetX, targetY, 16, 0, 2 * Math.PI);
         canvasCtx.fillStyle = '#facc15';
         canvasCtx.fill();
         canvasCtx.lineWidth = 4;
         canvasCtx.strokeStyle = '#ffffff';
         canvasCtx.stroke();
 
-        // เช็กการชนกับกล่องซ้าย / ขวา
         let hovered = null;
         if (checkCollision(targetX, targetY, leftBox)) hovered = 'LEFT';
         else if (checkCollision(targetX, targetY, rightBox)) hovered = 'RIGHT';
@@ -243,7 +266,6 @@
         if (hovered) {
           if (selectedBox === hovered) {
             holdDuration++;
-            // หลอดวงกลมสะสมการค้างนิ้ว
             drawProgressCircle(targetX, targetY, holdDuration / HOLD_THRESHOLD);
             if (holdDuration >= HOLD_THRESHOLD) {
               checkAnswer(hovered);
@@ -262,39 +284,50 @@
     }
 
     function checkCollision(x, y, box) {
-      return x >= box.x && x <= box.x + box.w && y >= box.y && y <= box.y + box.h;
+      // ขยายพื้นที่ชนเพิ่ม 15px ให้ชี้โดนง่ายขึ้น
+      return x >= box.x - 15 && x <= box.x + box.w + 15 && y >= box.y - 15 && y <= box.y + box.h + 15;
     }
 
     function drawTargetBox(box, color, isHovered) {
       canvasCtx.save();
-      canvasCtx.fillStyle = isHovered ? color : 'rgba(15, 23, 42, 0.7)';
-      canvasCtx.strokeStyle = color;
-      canvasCtx.lineWidth = isHovered ? 6 : 3;
+      if (isHovered) {
+        canvasCtx.shadowColor = color;
+        canvasCtx.shadowBlur = 18;
+        canvasCtx.fillStyle = color;
+        canvasCtx.strokeStyle = '#ffffff';
+        canvasCtx.lineWidth = 5;
+      } else {
+        canvasCtx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+        canvasCtx.strokeStyle = color;
+        canvasCtx.lineWidth = 3;
+      }
+
       canvasCtx.beginPath();
-      canvasCtx.roundRect(box.x, box.y, box.w, box.h, 16);
+      canvasCtx.roundRect(box.x, box.y, box.w, box.h, 18);
       canvasCtx.fill();
       canvasCtx.stroke();
 
+      canvasCtx.shadowBlur = 0;
       canvasCtx.fillStyle = '#ffffff';
       canvasCtx.font = 'bold 22px sans-serif';
       canvasCtx.textAlign = 'center';
-      canvasCtx.fillText(box.title, box.x + box.w / 2, box.y + 70);
+      canvasCtx.fillText(box.title, box.x + box.w / 2, box.y + 75);
       canvasCtx.font = '16px sans-serif';
-      canvasCtx.fillStyle = '#cbd5e1';
-      canvasCtx.fillText(box.sub, box.x + box.w / 2, box.y + 110);
+      canvasCtx.fillStyle = isHovered ? '#ffffff' : '#cbd5e1';
+      canvasCtx.fillText(box.sub, box.x + box.w / 2, box.y + 115);
       canvasCtx.restore();
     }
 
     function drawProgressCircle(x, y, progress) {
       canvasCtx.beginPath();
-      canvasCtx.arc(x, y, 28, -Math.PI / 2, (-Math.PI / 2) + (Math.PI * 2 * progress));
+      canvasCtx.arc(x, y, 26, -Math.PI / 2, (-Math.PI / 2) + (Math.PI * 2 * progress));
       canvasCtx.lineWidth = 6;
       canvasCtx.strokeStyle = '#22c55e';
       canvasCtx.stroke();
     }
 
     function checkAnswer(chosenSide) {
-      const correct = questions[currentIndex].type === chosenSide;
+      const correct = currentQuestion.type === chosenSide;
       if (correct) {
         score += 10;
         playBeep(true);
@@ -306,13 +339,12 @@
       nextQuestion();
     }
 
-    // ตั้งค่าโมเดล MediaPipe Hands
     const hands = new Hands({
       locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
     });
     hands.setOptions({
       maxNumHands: 1,
-      modelComplexity: 1,
+      modelComplexity: 0, // ลดภาระเครื่องให้เล่นได้ลื่นไหล ไม่กระตุก
       minDetectionConfidence: 0.5,
       minTrackingConfidence: 0.5
     });
@@ -331,14 +363,13 @@
       isPlaying = true;
       nextQuestion();
 
-      // ตัวจับเวลาถอยหลัง
       const timer = setInterval(() => {
         timeLeft--;
-        timerText.innerText = `⏳ เวลา: ${timeLeft} วิ`;
+        timerText.innerText = `⏳ เวลา: ${formatTime(timeLeft)}`;
         if (timeLeft <= 0) {
           clearInterval(timer);
           isPlaying = false;
-          alert(`🎉 หมดเวลา! คะแนนรวมของคุณคือ: ${score} คะแนน`);
+          alert(`🎉 หมดเวลา 2 นาที!\nคุณทำคะแนนรวมได้: ${score} คะแนน`);
           location.reload();
         }
       }, 1000);
