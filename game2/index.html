@@ -96,7 +96,7 @@
   <div id="ui-layer">
     <div class="top-bar">
       <div id="score-text">⭐ คะแนน: 0</div>
-      <div style="color: #cbd5e1; font-size: 16px;">💡 ยกนิ้วชี้แตะ "ภาพ" แล้วไปแตะ "ชื่อ" ให้ตรงกัน</div>
+      <div style="color: #cbd5e1; font-size: 16px;">💡 ใช้นิ้วชี้จิ้มแตะ "ภาพ" แล้วจิ้ม "ชื่อ" ได้ทันที ไม่ต้องกดค้าง</div>
       <div id="timer-text" style="color: #38bdf8;">⏳ เวลา: 02:00</div>
     </div>
     <div></div>
@@ -106,13 +106,12 @@
     <h1 style="font-size: 38px; margin-bottom: 12px;">🧩 AR Matching: จับคู่อุปกรณ์คอมพิวเตอร์</h1>
     <p style="font-size: 18px; color: #cbd5e1; margin-bottom: 24px; text-align: center; max-width: 540px; line-height: 1.6;">
       ภารกิจท้าทายความเร็ว <b>2 นาที!</b><br>
-      ยกนิ้วชี้ขึ้นมาหน้ากล้อง แตะค้างที่ <b>การ์ดรูปภาพ</b> แล้วไปแตะ <b>การ์ดชื่อ</b> ที่คู่กัน
+      ยกนิ้วชี้ขึ้นมาหน้ากล้อง <b>จิ้มแตะการ์ดได้ทันที</b> เพื่อจับคู่ภาพกับชื่อ
     </p>
     <button class="start-btn" id="start-btn">เริ่มจับคู่ (2 นาที)</button>
   </div>
 
   <script>
-    // คลังข้อมูลฮาร์ดแวร์คอมพิวเตอร์ 20 ชนิด
     const hardwareDatabase = [
       { id: 'kb', icon: '⌨️', name: 'แป้นพิมพ์ (Keyboard)' },
       { id: 'mouse', icon: '🖱️', name: 'เมาส์ (Mouse)' },
@@ -143,11 +142,12 @@
     let selectedCard = null;
 
     let score = 0;
-    let timeLeft = 120; // กำหนด 2 นาที (120 วินาที)
+    let timeLeft = 120;
     let isPlaying = false;
-    let hoverDuration = 0;
-    const HOVER_THRESHOLD = 12; // ค้างนิ้วประมาณ 0.35 วิ
-    let hoveredCard = null;
+    
+    // ระบบป้องกันการจิ้มเบิ้ล (Cooldown ระหว่างแตะแต่ละครั้ง ~0.25 วินาที)
+    let lastTapTime = 0;
+    let lastTappedCard = null;
 
     const videoElement = document.getElementById('webcam');
     const canvasElement = document.getElementById('gameCanvas');
@@ -167,22 +167,22 @@
       const now = audioCtx.currentTime;
 
       if (type === 'select') {
-        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.setValueAtTime(480, now);
         gain.gain.setValueAtTime(0.15, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-        osc.start(now); osc.stop(now + 0.1);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+        osc.start(now); osc.stop(now + 0.08);
       } else if (type === 'correct') {
         osc.frequency.setValueAtTime(523.25, now);
         osc.frequency.setValueAtTime(659.25, now + 0.08);
         osc.frequency.setValueAtTime(783.99, now + 0.16);
         gain.gain.setValueAtTime(0.2, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
-        osc.start(now); osc.stop(now + 0.35);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+        osc.start(now); osc.stop(now + 0.3);
       } else if (type === 'wrong') {
-        osc.frequency.setValueAtTime(200, now);
+        osc.frequency.setValueAtTime(180, now);
         gain.gain.setValueAtTime(0.2, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
-        osc.start(now); osc.stop(now + 0.25);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+        osc.start(now); osc.stop(now + 0.2);
       }
     }
 
@@ -199,7 +199,6 @@
     }
     window.addEventListener('resize', resizeCanvas);
 
-    // สุ่มทีละ 3 ข้อ และไม่ซ้ำข้อเดิมจนกว่าจะหมดกอง
     function setupNewRound() {
       if (availablePool.length < 3) {
         availablePool = [...hardwareDatabase].sort(() => 0.5 - Math.random());
@@ -218,8 +217,8 @@
     function calculateCardPositions() {
       const w = canvasElement.width;
       const h = canvasElement.height;
-      const cardW = Math.min(250, w * 0.35);
-      const cardH = 110;
+      const cardW = Math.min(260, w * 0.36);
+      const cardH = 115;
       const startY = h * 0.22;
       const gapY = cardH + 24;
 
@@ -241,6 +240,7 @@
     function onResults(results) {
       canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
+      // วาดการ์ด
       imageCards.forEach(card => drawCard(card));
       nameCards.forEach(card => drawCard(card));
 
@@ -249,7 +249,7 @@
         const tipX = (1 - indexTip.x) * canvasElement.width;
         const tipY = indexTip.y * canvasElement.height;
 
-        // วาดพอยน์เตอร์ปลายนิ้ว
+        // วาดจุดเคอร์เซอร์ปลายนิ้ว
         canvasCtx.beginPath();
         canvasCtx.arc(tipX, tipY, 16, 0, 2 * Math.PI);
         canvasCtx.fillStyle = '#facc15';
@@ -258,41 +258,48 @@
         canvasCtx.strokeStyle = '#ffffff';
         canvasCtx.stroke();
 
+        // ตรวจสอบการชน (ขยายขอบ Hitbox ออกอีก 15px เพื่อให้แตะติดง่ายขึ้นมาก)
+        const margin = 15;
         const allCards = [...imageCards, ...nameCards].filter(c => !c.matched);
-        let currentHover = allCards.find(c => tipX >= c.x && tipX <= c.x + c.w && tipY >= c.y && tipY <= c.y + c.h);
+        const touchedCard = allCards.find(c => 
+          tipX >= c.x - margin && 
+          tipX <= c.x + c.w + margin && 
+          tipY >= c.y - margin && 
+          tipY <= c.y + c.h + margin
+        );
 
-        if (currentHover) {
-          if (hoveredCard === currentHover) {
-            hoverDuration++;
-            drawLoadingCircle(tipX, tipY, hoverDuration / HOVER_THRESHOLD);
-            if (hoverDuration >= HOVER_THRESHOLD) {
-              handleCardClick(currentHover);
-              hoverDuration = 0;
-              hoveredCard = null;
-            }
-          } else {
-            hoveredCard = currentHover;
-            hoverDuration = 1;
+        const now = Date.now();
+        if (touchedCard) {
+          // ถ้าเป็นคนละใบกับที่เพิ่งแตะ หรือเวลาผ่านไปเกิน 250ms -> ให้เลือกทันที!
+          if (touchedCard !== lastTappedCard || (now - lastTapTime > 300)) {
+            handleCardTap(touchedCard);
+            lastTapTime = now;
+            lastTappedCard = touchedCard;
           }
         } else {
-          hoveredCard = null;
-          hoverDuration = 0;
+          // พอนิ้วขยับออกจากกล่อง ให้ล้างการจำการ์ดเดิม เพื่อให้กลับมาจิ้มใหม่ได้ทันที
+          lastTappedCard = null;
         }
       }
     }
 
-    function handleCardClick(card) {
+    // ฟังก์ชันแตะปุ๊บ ทำงานปั๊บ (Instant Tap)
+    function handleCardTap(card) {
       if (!selectedCard) {
         selectedCard = card;
         playAudio('select');
       } else {
         if (selectedCard === card) {
+          // แตะซ้ำใบเดิม = ยกเลิกการเลือก
           selectedCard = null;
+          playAudio('select');
           return;
         }
 
+        // ต้องเป็นการ์ดต่างประเภท (รูป ↔ ชื่อ)
         if (selectedCard.type !== card.type) {
           if (selectedCard.id === card.id) {
+            // จับคู่ถูกต้อง
             selectedCard.matched = true;
             card.matched = true;
             score += 10;
@@ -302,15 +309,17 @@
 
             const remaining = [...imageCards, ...nameCards].filter(c => !c.matched);
             if (remaining.length === 0) {
-              setTimeout(setupNewRound, 400);
+              setTimeout(setupNewRound, 300);
             }
           } else {
+            // จับคู่ผิด
             score = Math.max(0, score - 3);
             scoreText.innerText = `⭐ คะแนน: ${score}`;
             playAudio('wrong');
             selectedCard = null;
           }
         } else {
+          // ถ้าแตะประเภทเดียวกัน (เช่น รูปไปรูป) ให้เปลี่ยนเป้าหมายที่เลือกทันที
           selectedCard = card;
           playAudio('select');
         }
@@ -323,20 +332,30 @@
       canvasCtx.save();
       const isSelected = selectedCard === card;
 
-      canvasCtx.fillStyle = isSelected ? 'rgba(234, 179, 8, 0.4)' : 'rgba(15, 23, 42, 0.82)';
-      canvasCtx.strokeStyle = isSelected ? '#facc15' : (card.type === 'IMAGE' ? '#38bdf8' : '#c084fc');
-      canvasCtx.lineWidth = isSelected ? 5 : 3;
+      // เพิ่มแสง Glow สว่างชัดเจนเมื่อการ์ดถูกเลือก
+      if (isSelected) {
+        canvasCtx.shadowColor = '#facc15';
+        canvasCtx.shadowBlur = 20;
+        canvasCtx.fillStyle = 'rgba(234, 179, 8, 0.45)';
+        canvasCtx.strokeStyle = '#facc15';
+        canvasCtx.lineWidth = 6;
+      } else {
+        canvasCtx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        canvasCtx.strokeStyle = card.type === 'IMAGE' ? '#38bdf8' : '#c084fc';
+        canvasCtx.lineWidth = 3;
+      }
 
       canvasCtx.beginPath();
       canvasCtx.roundRect(card.x, card.y, card.w, card.h, 16);
       canvasCtx.fill();
       canvasCtx.stroke();
 
+      canvasCtx.shadowBlur = 0; // คืนค่า shadow
       canvasCtx.textAlign = 'center';
       canvasCtx.textBaseline = 'middle';
 
       if (card.type === 'IMAGE') {
-        canvasCtx.font = '50px sans-serif';
+        canvasCtx.font = '52px sans-serif';
         canvasCtx.fillText(card.icon, card.x + card.w / 2, card.y + card.h / 2);
       } else {
         canvasCtx.fillStyle = '#ffffff';
@@ -346,23 +365,22 @@
       canvasCtx.restore();
     }
 
-    function drawLoadingCircle(x, y, progress) {
-      canvasCtx.beginPath();
-      canvasCtx.arc(x, y, 26, -Math.PI / 2, (-Math.PI / 2) + (Math.PI * 2 * progress));
-      canvasCtx.lineWidth = 5;
-      canvasCtx.strokeStyle = '#22c55e';
-      canvasCtx.stroke();
-    }
-
+    // ปรับแต่ง MediaPipe ให้ตอบสนองเร็วพิเศษ
     const hands = new Hands({
       locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
     });
-    hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+    hands.setOptions({
+      maxNumHands: 1,
+      modelComplexity: 0, // ปรับเป็น 0 เพื่อความลื่นไหล ตอบสนองไวสุดๆ ไม่หน่วง
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5
+    });
     hands.onResults(onResults);
 
     const camera = new Camera(videoElement, {
       onFrame: async () => { await hands.send({ image: videoElement }); },
-      width: 1280, height: 720
+      width: 1280,
+      height: 720
     });
 
     startBtn.addEventListener('click', async () => {
